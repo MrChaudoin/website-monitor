@@ -1,58 +1,51 @@
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from datetime import datetime
+import time
 import pandas as pd
 import os
 
-SEARCH_URL = "https://efdsearch.senate.gov/search/"
-
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-}
-
 def check_for_new_filings():
-    session = requests.Session()
-    
-    response = session.post(SEARCH_URL, headers=HEADERS, data={})
-    response.raise_for_status()
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    driver = webdriver.Chrome(options=options)
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    table = soup.find("table", {"id": "filedReports"})
-    
-    if not table:
-        print("No table found on page.")
-        return []
+    driver.get("https://efdsearch.senate.gov/search/")
+    time.sleep(2)
 
-    rows = table.find("tbody").find_all("tr")
+    search_button = driver.find_element(By.ID, "searchbtn")
+    search_button.click()
+    time.sleep(5)
+
+    rows = driver.find_elements(By.CSS_SELECTOR, "table#filedReports tbody tr")
     new_data = []
     existing = set()
 
-    # Load previously logged URLs
     if os.path.exists("data/log.csv"):
         existing_df = pd.read_csv("data/log.csv")
         existing = set(existing_df["Document URL"].values)
 
     for row in rows:
-        cols = row.find_all("td")
+        cols = row.find_elements(By.TAG_NAME, "td")
         if len(cols) < 4:
             continue
+        name = cols[0].text.strip()
+        office = cols[1].text.strip()
+        date = cols[2].text.strip()
+        url = cols[3].find_element(By.TAG_NAME, "a").get_attribute("href")
 
-        name = cols[0].get_text(strip=True)
-        office = cols[1].get_text(strip=True)
-        date = cols[2].get_text(strip=True)
-        link = cols[3].find("a")
-        url = link["href"] if link else ""
-
-        if url and url not in existing:
+        if url not in existing:
             new_data.append({
                 "Name": name,
                 "Office": office,
                 "Filing Date": date,
                 "Document URL": url
             })
+
+    driver.quit()
 
     if new_data:
         df_new = pd.DataFrame(new_data)
@@ -61,7 +54,6 @@ def check_for_new_filings():
             df_combined = pd.concat([df_existing, df_new], ignore_index=True)
         else:
             df_combined = df_new
-
         os.makedirs("data", exist_ok=True)
         df_combined.to_csv("data/log.csv", index=False)
 
