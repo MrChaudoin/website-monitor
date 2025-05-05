@@ -1,17 +1,21 @@
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from datetime import datetime
-import time
+from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 import os
+import time
 
 def check_for_new_filings():
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    driver = webdriver.Chrome(options=options)
+
+    # Use WebDriver Manager to auto-fetch compatible ChromeDriver
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
 
     driver.get("https://efdsearch.senate.gov/search/")
     time.sleep(2)
