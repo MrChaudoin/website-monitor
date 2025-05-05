@@ -2,19 +2,21 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import os
-from datetime import datetime
 
-SEARCH_URL = "https://efdsearch.senate.gov/search/view/annual"
+SEARCH_URL = "https://efdsearch.senate.gov/search/"
 
 def check_for_new_filings():
-    response = requests.get(SEARCH_URL)
+    session = requests.Session()
+    
+    # This mimics a form submission on the site
+    response = session.post(SEARCH_URL, data={})
     response.raise_for_status()
 
-    soup = BeautifulSoup(response.text, 'html.parser')
+    soup = BeautifulSoup(response.text, "html.parser")
     table = soup.find("table", {"id": "filedReports"})
-
+    
     if not table:
-        print("Could not find the data table.")
+        print("No table found on page.")
         return []
 
     rows = table.find("tbody").find_all("tr")
