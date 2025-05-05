@@ -19,3 +19,8 @@ try:
     st.dataframe(df.sort_values(by='Filing Date', ascending=False), use_container_width=True)
 except FileNotFoundError:
     st.warning("Log file not found. Run the checker at least once.")
+    # Support scheduled background runs via Streamlit Cloud
+import os
+
+if os.getenv("STREAMLIT_RUN_CONTEXT") == "schedule":
+    check_for_new_filings()
